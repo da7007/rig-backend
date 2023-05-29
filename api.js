@@ -36,11 +36,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const http_1 = __importDefault(require("http"));
+const https_1 = __importDefault(require("https"));
 const cors_1 = __importDefault(require("cors"));
 const mongo = __importStar(require("mongodb"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const credentials = __importStar(require("../credentials/auth.json"));
 const app = (0, express_1.default)();
 const port = 3000;
+const httpServer = http_1.default.createServer(app);
+const httpsServer = https_1.default.createServer(credentials, app);
 dotenv_1.default.config();
 function connectToDatabase(path, collectionName, request) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -54,6 +59,9 @@ function connectToDatabase(path, collectionName, request) {
                 item = yield collection.findOne({ email_address: request.email_address });
                 if (request.password === (item === null || item === void 0 ? void 0 : item.password)) {
                     return true;
+                }
+                else {
+                    return false;
                 }
             case "/register":
                 try {
@@ -72,13 +80,14 @@ app.use((0, cors_1.default)({
     origin: "*"
 }));
 app.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log("Hello World!");
     const request = {
         _id: new mongo.ObjectId,
         first_name: "",
         last_name: "",
         username: "",
-        email_address: JSON.stringify(req.query.email_address),
-        password: JSON.stringify(req.query.password)
+        email_address: req.query.email_address,
+        password: req.query.password
     };
     if (yield connectToDatabase("/login", "Users", request)) {
         res.sendStatus(200);
