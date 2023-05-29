@@ -42,19 +42,29 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const app = (0, express_1.default)();
 const port = 3000;
 dotenv_1.default.config();
-function connectToDatabase(collectionName, email, password) {
+function connectToDatabase(path, collectionName, request) {
     return __awaiter(this, void 0, void 0, function* () {
-        const client = new mongo.MongoClient(process.env.DB_CONNECTION);
+        const client = new mongo.MongoClient("mongodb://localhost");
         yield client.connect();
-        const db = client.db(process.env.DB_NAME);
+        const db = client.db("rig-db");
         const collection = db.collection(collectionName);
-        const item = yield collection.findOne({ email_address: email });
-        if (password === (item === null || item === void 0 ? void 0 : item.password)) {
-            return true;
+        let item;
+        switch (path) {
+            case "/login":
+                item = yield collection.findOne({ email_address: request.email_address });
+                if (request.password === (item === null || item === void 0 ? void 0 : item.password)) {
+                    return true;
+                }
+            case "/register":
+                try {
+                    item = yield collection.insertOne({ first_name: request.first_name, last_name: request.last_name, username: request.username, email_address: request.email_address, password: request.password });
+                    return true;
+                }
+                catch (error) {
+                    console.error(`An error occured while registering the user account ${error}`);
+                }
         }
-        else {
-            return false;
-        }
+        return false;
     });
 }
 app.use((0, cors_1.default)({
@@ -62,9 +72,31 @@ app.use((0, cors_1.default)({
     origin: "*"
 }));
 app.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const reqEmailAddress = req.query.email_address;
-    const reqPassword = req.query.password;
-    if (yield connectToDatabase("Users", reqEmailAddress, reqPassword)) {
+    const request = {
+        _id: new mongo.ObjectId,
+        first_name: "",
+        last_name: "",
+        username: "",
+        email_address: JSON.stringify(req.query.email_address),
+        password: JSON.stringify(req.query.password)
+    };
+    if (yield connectToDatabase("/login", "Users", request)) {
+        res.sendStatus(200);
+    }
+    else {
+        res.sendStatus(403);
+    }
+}));
+app.post("/register", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const request = {
+        _id: new mongo.ObjectId,
+        first_name: "Dylan",
+        last_name: "Armstrong",
+        username: req.query.username,
+        email_address: req.query.email_address,
+        password: req.query.password
+    };
+    if (yield connectToDatabase("/register", "Users", request)) {
         res.sendStatus(200);
     }
     else {
